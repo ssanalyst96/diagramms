@@ -1,0 +1,191 @@
+@startuml
+participant "АИС Сортмастер" as sm
+queue "КШД" as kafka
+participant "Wildberries" as wb
+participant "ПочтаID" as pi
+participant "ЛК ЮЛ" as lk
+participant "Адаптер ВБ" as ad
+participant "ПочтаAPI" as papi
+participant "ИС Сорпо" as sor
+participant "Тарификатор" as tf
+
+autonumber
+
+
+
+
+==Получение hid и Клиентского токена==
+
+seller -> lk++: Авторизоваться (https://#{host}/oauth2/authorize?response_type=code&client_id=#{client_id}&redirect_uri=#{callBackApp}&scope=email+openid&group=portal?)
+lk -> pi++: Запрость токен
+pi -> lk--: Отдать токен
+lk -> pi--++: GET http://passport.test.russianpost.ru/pochtaid-sso/api/v2.2/session/info.profile?lang=ru_RU
+pi -> lk--++: Отдать personHid, legalPersonHid 
+lk -> seller--: Отобразить кабинет нужного юридического лица физическому лицу 
+seller -> lk++: Нажать кнопку получения клиентского токена (token1)
+lk -> pi++: POST passport.pochta.ru/lem/ext/v1.0/PLBundleToken {personHid, legalPersonHid}
+pi -> lk--: HTTP response 200 {token1}
+lk -> seller--: Отобразить клиентский токен в ui компоненте ЛК ЮЛ
+seller -> lk: Скопировать клиентский токен 
+seller -> wb: Вставить клиентский токен в ЛК ВБ
+
+==Создать отправление из ВБ==
+seller -> wb++: Создать отправление 
+wb -> papi++: PUT postapi.pochta.ru/2.0/user/backlog {...} 
+papi -> pi++: Проверить Authorization token
+pi --> papi--: HTTP response 200 
+papi -> ad--++: PUT /2.0/user/backlog {...} (пример метода)
+ad -> pi++: passport.pochta.ru/lem/ext/v1.0/PLBundleToken/check
+pi --> ad--: HTTP response 200 {personHid, legalPersonHid}
+ad -> lk--++: PUT /2.0/user/backlog {...+ personHid, legalPersonHid} (пример метода)
+lk --> ad--++: HTTP response 200
+ad --> wb--: HTTP response 200
+wb -> seller--: Состояние успеха
+
+==Создать партию из WB==
+seller -> wb++: Создать партию 
+wb -> papi++: POST postapi.pochta.ru/1.0/user/shipment {...}
+papi -> pi++: Проверить Authorization token
+pi --> papi--: HTTP response 200 
+papi -> ad--++: POST /2.0/user/backlog {...} 
+ad -> pi++: passport.pochta.ru/lem/ext/v1.0/PLBundleToken/check
+pi --> ad--: HTTP response 200 {personHid, legalPersonHid}
+ad -> lk--++: POST /2.0/user/shipment {...+ personHid, legalPersonHid}
+lk --> ad--++: HTTP response 200
+ad --> wb--: HTTP response 200
+wb -> seller--: Состояние успеха
+
+
+==Проверка вызова курьера==
+seller -> wb++: Ввести адрес строкой
+wb -> papi++: POST postapi.pochta.ru/1.0/clean/address {...} 
+papi -> pi++: Проверить Authorization token
+pi --> papi--: HTTP response 200 
+papi -> ad--++: POST 1.0/clean/address {...}
+ad -> pi++: passport.pochta.ru/lem/ext/v1.0/PLBundleToken/check
+pi --> ad--: HTTP response 200 {personHid, legalPersonHid}
+ad -> lk--++: POST 1.0/clean/address {...+ personHid, legalPersonHid}
+lk --> ad--++: HTTP response 200
+ad --> wb--: HTTP response 200
+wb -> seller--: Состояние успеха
+
+seller -> wb++: Проверить вызов курьера по адресу 
+wb -> papi++: POST postapi.pochta.ru/1.0/courier/check-courier-order-address {...} 
+papi -> pi++: Проверить Authorization token
+pi --> papi--: HTTP response 200 
+papi -> ad--++: POST /1.0/courier/check-courier-order-address {...}
+ad -> pi++: passport.pochta.ru/lem/ext/v1.0/PLBundleToken/check
+pi --> ad--: HTTP response 200 {personHid, legalPersonHid}
+ad -> lk--++: POST /1.0/courier/check-courier-order-address {...+ personHid, legalPersonHid} 
+lk --> ad--++: HTTP response 200
+ad --> wb--: HTTP response 200
+wb -> seller--: Отдать ответ по доступности
+
+==Запросить статус заявки по курьеру==
+
+seller -> wb++: Запросить статус заявки по курьеру 
+wb -> papi++: POST postapi.pochta.ru/1.0/courier/search-courier-orders {...} 
+papi -> pi++: Проверить Authorization token
+pi --> papi--: HTTP response 200 
+papi -> ad--++: POST /1.0/courier/search-courier-orders {...}
+ad -> pi++: passport.pochta.ru/lem/ext/v1.0/PLBundleToken/check
+pi --> ad--: HTTP response 200 {personHid, legalPersonHid}
+ad -> lk--++: POST /1.0/courier/search-courier-orders {...+ personHid, legalPersonHid} 
+lk --> ad--++: HTTP response 200
+ad --> wb--: HTTP response 200
+wb -> seller--: Отдать статус заявки
+
+==Отменить вызов курьера==
+seller -> wb++: Отменить вызов курьера 
+wb -> papi++: POST postapi.pochta.ru/1.0/courier/refuse-order {...} 
+papi -> pi++: Проверить Authorization token
+pi --> papi--: HTTP response 200 
+papi -> ad--++: POST /1.0/courier/refuse-order {...}
+ad -> pi++: passport.pochta.ru/lem/ext/v1.0/PLBundleToken/check
+pi --> ad--: HTTP response 200 {personHid, legalPersonHid}
+ad -> lk--++: POST /1.0/courier/refuse-order {...+ personHid, legalPersonHid} 
+lk --> ad--++: HTTP response 200
+ad --> wb--: HTTP response 200
+wb -> seller--: Вернуть состояние отмены
+
+==Получение ОПС для сдачи партий==
+
+alt Получение и обработка мастерданных ОПС
+papi -> papi++: Прочесть ссылки на файл с ОПС из КШД
+papi -> ad--: Сохранить информацию в БД адаптера
+end
+seller -> wb++: Ввести адрес
+wb -> papi++: GET postapi.pochta.ru/1.0/postoffices
+papi -> pi++: Проверить Authorization token
+pi -> papi--: HTTP response 200
+papi -> ad++: Получить актуальные данные 
+ad -> papi--: Отдать актуальные данные 
+papi -> wb--: HTTP response 200
+wb -> seller--: Показать ОПС на карте/вывести список
+
+
+
+==Получить тарифы==
+
+wb -> papi++: GET /tariff
+activate wb
+papi -> ad++: GET /calculation
+ad -> tf++: Получить тарифы
+tf --> ad--: Отдать тарифы
+ad --> papi--: HTTP 200 response
+papi --> wb--: Тарифы в ответе
+deactivate wb
+
+
+
+==Получение данных из АИС Сортмастер==
+sm ->> kafka: Передать данные Ф23а
+ad -> kafka: Потребить данные Ф23а {filter}
+activate ad
+ad -> ad: Записать данные об отправлениях в БД
+deactivate ad
+wb -> papi++: GET postapi.pochta.ru/1.0/bar_codes 
+activate wb
+papi -> pi++: Проверить access_token
+pi --> papi--: HTTP response 200
+papi --> wb--: Вернуть данные о batch и ТС 
+deactivate wb
+
+==Подтверждение получения информации==
+wb -> papi++: PUT postapi.pochta.ru/1.0/batch
+activate wb
+papi -> pi: Проверить access_token
+pi --> papi: HTTP response 200 
+papi --> wb:  batch, ТС приняты
+deactivate wb
+papi -> papi--: Записать в БД принятие batch (не передавать в GET /bar_codes)
+
+==Повторный запрос о конкретном batch==
+
+wb -> papi++: GET postapi.pochta.ru/1.0/batch
+activate wb
+papi -> pi: Проверить access_token
+pi --> papi: HTTP response 200 
+papi --> wb--:  Передать пакет данных
+deactivate wb
+
+
+==Приемка на СЦ WB==
+wb -> papi++: PUT postapi.pochta.ru/accept_bar_code
+activate wb
+papi -> pi: Проверить access_token
+activate pi
+pi --> papi: HTTP response 200 
+deactivate pi
+papi -> sor++: Проверка истории операций (ПИ-05.21)
+sor -> papi--: Получение истории операций
+papi -> papi++: Проверить операцию "Возврат"
+opt Возврат зафиксирован 
+papi --> wb: Передать ошибку 
+end 
+papi -> papi: Выполнить операцию "Вручение" 
+papi --> kafka: Передать операцию "Вручение" (И-438)
+papi -> wb: Передать состояние успеха
+deactivate wb
+deactivate papi
+@enduml

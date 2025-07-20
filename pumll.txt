@@ -1,0 +1,34 @@
+
+==Создать договор==
+
+lawyer -> LIFE++: Кнопка "Создать договор"
+LIFE -> LIBE++: GET deals/:id // получение данных сделки
+LIBE --> LIFE--: HTTP response 200 {deal representations}
+LIFE -> LIBE--++: GET agreement-templates // получение шаблонов ДВОУ
+LIBE --> LIFE--: HTTP response 200 {{template},{template}}
+LIFE --> lawyer++: Форма создания ДВОУ 
+lawyer -> LIFE: Заполнить форму 
+lawyer -> LIFE++: Подтвердить создание
+LIFE -> LIBE++: POST agreement
+LIBE --> LIFE--: HTTP response 200
+LIFE -> lawyer--: Успешное создание 
+
+Opt Скачать договор
+lawyer -> LIFE--: Кнопка "загрузить документ" 
+LIFE -> LIBE++: GET attachment
+LIBE --> LIFE--++: HTTP response 200
+LIFE -> lawyer--++: Документ готов к печати
+lawyer --> lawyer--: Распечатать документ
+end
+
+Opt Договор подписан
+lawyer -> LIFE++: Загрузить скан в интерфейсе 
+LIFE -> LIBE--++: POST attachment
+LIBE --> LIFE--: HTTP response 200 
+LIBE --> LIBE++--: Создать связь аттача и ДВОУ
+LIBE --> LIBE++: PATCH agreement {"status": 1}
+LIBE --> LIFE++--: Договор подписан
+LIFE -> lawyer--: Нотификация об успешном подписании
+end
+
+@enduml

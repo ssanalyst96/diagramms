@@ -1,0 +1,18 @@
+@startuml
+autonumber
+participant WB as wb
+participant Почта.API as pa
+participant Адаптер as ad
+participant Тарификатор as tf
+
+==Получить тарифы==
+
+wb -> pa++: GET /tariff
+activate wb
+pa -> ad++: GET /calculation
+ad -> tf++: Получить тарифы
+tf -> ad--: Отдать тарифы
+ad -> pa--: HTTP 200 response
+pa -> wb--: Тарифы в ответе
+deactivate wb
+@enduml

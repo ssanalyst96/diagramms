@@ -1,0 +1,55 @@
+@startuml
+autonumber
+actor "Агент" as agent
+participant "Top'n'Lab" as tnl
+participant "legal FE" as fe
+participant "legal BE" as be
+actor "Юрист" as lawyer
+
+agent -> tnl++: Создать сделку
+tnl -> be--++: POST deal {authToken}
+be -> tnl--: HTTP 200{deal_representation}
+tnl -> agent: Успешное создание
+lawyer -> fe++: Запросить сделки
+fe --> be--++: GET deals
+be --> fe--++: HTTP 200 {deals}
+fe -> lawyer--: Вывести сделки 
+
+alt HTTP 400-500
+agent -> tnl++: Создать сделку
+tnl ->> be--++: POST deal {authToken}
+be -> tnl--: HTTP 400-500{errorResponse}
+end 
+
+
+@enduml
+
+
+
+@startuml
+autonumber
+actor "Агент" as agent
+participant "Top'n'Lab" as tnl
+participant "legal FE" as fe
+participant "legal BE" as be
+actor "Юрист" as lawyer
+
+agent -> tnl++: Создать сделку
+tnl -> be++--: GET deals/form-options {authToken}
+be --> tnl--++: HTTP 200{Справочники: deal_type; etc.}
+tnl --> tnl--++: Заполнить форму создания сделки 
+tnl -> be--++: POST deal {authToken}
+be -> tnl--++: HTTP 200{deal_representation}
+tnl -> agent--: Успешное создание
+lawyer -> fe++: Запросить сделки
+fe --> be--++: GET deals
+be --> fe--++: HTTP 200 {deals}
+fe -> lawyer--: Вывести сделки 
+
+alt HTTP 400-500
+agent -> tnl++: Создать сделку
+tnl ->> be--++: POST deal {authToken}
+be -> tnl--++: HTTP 400-500{errorResponse}
+tnl --> agent--: Ошибка при создании сделки
+end
+@enduml

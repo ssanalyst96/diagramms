@@ -1,0 +1,27 @@
+@startuml
+autonumber
+actor "Пользователь" as user
+participant "CRM Агента FE" as FE
+participant "CRM Агента BE" as BE
+
+==Успешный базовый сценарий==
+user -> FE++: Зайти в Отчетность 
+FE -> BE++: GET deals?filter...
+BE --> FE--: HTTP response 200
+FE -> user--: Показать сделки 
+user -> FE++: Изменить фильтры 
+FE -> BE++: GET deals?filter...
+BE --> FE--: HTTP response 200
+FE -> user--: Показать отфильтрованные сделки
+
+==HTTP ошибка==
+
+ALT 
+user -> FE++: Зайти в Отчетность
+FE -> BE++: GET deals?filter...
+BE --> FE--: HTTP response 400-500
+FE -> user--: Вывести сообщение об ошибке
+end
+
+
+@enduml

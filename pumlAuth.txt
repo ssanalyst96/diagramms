@@ -1,0 +1,64 @@
+@startuml
+actor "Селлер БВ" as seller
+participant "Wildberries" as wb
+participant "ПочтаID" as pi
+participant "ЛК ЮЛ" as lk
+participant "Адаптер ВБ" as ad
+participant "Почта" as po
+autonumber
+
+==Аутентификация==
+seller -> wb++: Создать отправление через Почту
+wb -> pi++: Редирект аутентификации/iframe???
+seller -> pi: POST passport.pochta.ru/lem/ext/v1.0/PLBundleToken 
+pi -> pi: GET pc/ext/v1.0/user
+pi -> pi: Кэшировать "sub" на сервере/Сохранить в сессии пользователя
+pi -> lk--++: Проверить соответствия ФЛ/ЮЛ ??? 
+lk -> lk: Соответствия не найдены
+lk -> seller: Заполни оферту WB
+seller -> lk: Заключить договор оферты WB 
+lk -> po++--: Передать данные оферы(?)
+po -> seller: Прислать email с кредами
+seller -> pi++: POST baseURL/v1.0/oauth2/token
+pi -> lk--: Передать token2(?)
+____________________________________________________________________________________________________________________________________________
+@startuml
+actor "Селлер БВ" as seller
+participant "Wildberries" as wb
+participant "Адаптер ВБ" as ad
+participant "Почта API" as papi
+participant "ПочтаID" as pi
+participant "ЛК ЮЛ" as lk
+autonumber
+
+==Получение hid и Клиентского токена==
+
+seller -> lk++: Авторизоваться (запрос авторизации?)
+lk -> pi++: Запрость токен(обычный)
+pi -> lk--: Отдать обычный токен
+lk -> pi--++: Запросить personHid, legalPersonHid по обычному токену (запрос хидов?)
+pi -> lk--++: Отдать personHid, legalPersonHid 
+lk -> seller--: Отобразить кабинет нужного юридического лица физическому лицу 
+seller -> lk++: Нажать кнопку получения клиентского токена (token1)
+lk -> pi++: POST passport.pochta.ru/lem/ext/v1.0/PLBundleToken {personHid, legalPersonHid}
+pi -> lk--: HTTP response 200 {token1}
+lk -> seller--: Отобразить клиентский токен в ui компоненте ЛК ЮЛ
+seller -> lk: Скопировать клиентский токен 
+seller -> wb: Вставить клиентский токен в ЛК ВБ
+
+
+==Токен2==
+
+seller -> lk: Заключить договор оферты 
+lk -> seller: Сообщение пользователю "Создается ЛК ЮЛ"
+lk -> seller: Прислать email с данными для входа 
+seller -> lk: Аутентификация ЮЛ по данным из письма 
+lk -> pi: /v1.0/oauth2/token
+pi -> lk: HTTP 200 {token2}
+lk -> seller: 
+
+
+
+==Запросы двойной авторизации==
+
+seller -> wb: Создать отправление
