@@ -1,0 +1,99 @@
+@startuml
+actor "Пользователь" as user #lightblue
+participant "Frontend" as fe 
+participant "Backend" as be
+participant "PaymentService" as ps
+database "PostgreSQL" as pg #yellow
+
+autonumber
+
+==Получить товар==
+user -> fe++: Перейти на карточку товара
+fe -> be++: GET baseurl/api/v1/products/{product_id}
+be --> pg: SELECT * FROM products WHERE id = *
+pg --> be: Представление товара
+be --> fe--: HTTP response 200
+fe -> user--: Отобразить карточку товара
+
+==Добавить в корзину== 
+
+user -> fe++: Добавить товар в корзину 
+fe -> be++: POST baseurl/api/v1/add-to-cart/{product_id}
+be --> fe--: HTTP response 200 
+fe -> user--: Отобразить состояние успеха
+
+==Оформить заказ==
+
+user -> fe++: Оформить заказ
+fe -> be++: POST baseurl/api/v1/checkouts
+be --> pg: INSERT INTO checkout (*, *, *)
+be --> fe--: HTTP response 200 
+fe -> user--: Экранная форма оформления заказа
+user -> fe++: Заполнить экранную форму и подтвердить создание заказа 
+fe -> be++: POST baseurl/api/v1/orders
+be --> pg: INSERT INTO orders (*, *, *)
+be --> fe--: HTTP response 200
+fe -> user--: Выбор способа оплаты
+user -> fe++: Выбрать способ оплаты
+fe -> be++: POST baseurl/api/v1/payments
+be --> ps++: proxy payment request 
+ps --> be--: HTTP response 200 {payment_url}
+deactivate ps
+be --> fe: HTTP response 200 {payment_url}
+deactivate be 
+fe -> user: Отобразить frame платежной системы
+user --> fe: Оплатить заказ
+fe -> be++: POST baseurl/api/v1/payment {order_id}
+be --> ps++: proxy payment request
+ps --> be--: HTTP response 200
+deactivate ps
+be -> fe: HTTP reponse 200
+fe -> be++: PATCH baseurl/api/v1/orders/{order_id} {status: "paid"}
+be --> pg: UPDATE orders SET status = 'paid'
+be --> fe--: HTTP response 200
+fe -> user--: Состояние успеха при оплате заказа
+
+
+alt #red Ошибка при оплате
+user -> fe++: Выбрать способ оплаты
+fe -> be++: POST baseurl/api/v1/payments
+be --> ps++: proxy payment request 
+ps --> be--: HTTP response 200 {payment_url}
+deactivate ps
+be --> fe: HTTP response 200 {payment_url}
+deactivate be 
+fe -> user: Отобразить frame платежной системы
+user --> fe: Оплатить заказ
+fe -> be++: POST baseurl/api/v1/payment {order_id}
+be --> ps++: proxy payment request
+ps --> be--: HTTP response 400
+deactivate be
+deactivate ps
+be -> fe: HTTP reponse 400
+deactivate be
+fe -> user--: Ошибка при оплате заказа
+deactivate fe
+
+alt #green Выбор другого способа оплаты
+fe -> user--: Ошибка при оплате заказа
+user -> fe: Выбрать другой способ оплаты
+fe -> be++: POST baseurl/api/v1/payments
+be --> ps++: proxy payment request 
+ps --> be--: HTTP response 200 {payment_url}
+deactivate ps
+be --> fe: HTTP response 200 {payment_url}
+deactivate be 
+fe -> user: Отобразить frame платежной системы
+user --> fe: Оплатить заказ
+fe -> be++: POST baseurl/api/v1/payment {order_id}
+be --> ps++: proxy payment request
+ps --> be--: HTTP response 200
+deactivate ps
+be -> fe: HTTP reponse 200
+fe -> be++: PATCH baseurl/api/v1/orders/{order_id} {status: "paid"}
+be --> pg: UPDATE orders SET status = 'paid'
+be --> fe--: HTTP response 200
+fe -> user--: Состояние успеха при оплате заказа
+end
+end
+@enduml
