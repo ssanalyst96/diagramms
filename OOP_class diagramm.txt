@@ -1,0 +1,53 @@
+@startuml
+
+abstract class Payment {
+  - amount: double
+  - paymentDate: Date
+  - transactionId: String
+  --
+  + {abstract} processPayment(): void
+  + getAmount(): double
+  + setAmount(amount: double): void
+  + getPaymentDate(): Date
+  + setPaymentDate(date: Date): void
+  + getTransactionId(): String
+  + setTransactionId(id: String): void
+}
+
+class CashPayment {
+  - cashProvided: double
+  --
+  + processPayment(): void
+  + calculateChange(): double
+  + getCashProvided(): double
+  + setCashProvided(cash: double): void
+}
+
+class CardPayment {
+  - cardNumber: String
+  - cardHolder: String
+  - expiryDate: Date
+  --
+  + processPayment(): void
+  + validateCard(): boolean
+  + getCardNumber(): String
+  + setCardNumber(number: String): void
+  + getCardHolder(): String
+  + setCardHolder(name: String): void
+  + getExpiryDate(): Date
+  + setExpiryDate(date: Date): void
+}
+
+class PaymentManager {
+  - payments: List<Payment>
+  --
+  + addPayment(payment: Payment): void
+  + processAllPayments(): void
+}
+
+Payment <|-- CashPayment
+Payment <|-- CardPayment
+PaymentManager o-- Payment
+
+
+@enduml
